@@ -63,7 +63,8 @@ export function SettingsPanel({ config, ankerConfigured, onSaved }: SettingsPane
       <div>
         <h2 className="font-heading text-lg font-semibold">Einstellungen</h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          Poll-Intervall, Datenquelle und lokale Geräte-IPs. Standard-IPs: Solarbank{" "}
+          Poll-Intervall, Datenquelle und lokale Geräte-IPs. Bei Apple Sign-In: LAN/Modbus
+          bevorzugen (Cloud braucht E‑Mail/Passwort). Standard-IPs: Solarbank{" "}
           <code className="text-foreground">192.168.178.190</code>, Smart Meter{" "}
           <code className="text-foreground">192.168.178.83</code>.
         </p>
@@ -94,12 +95,13 @@ export function SettingsPanel({ config, ankerConfigured, onSaved }: SettingsPane
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="mock">Mock / Demo (ohne Geräte)</SelectItem>
-              <SelectItem value="cloud">Anker Cloud API</SelectItem>
-              <SelectItem value="lan">LAN Modbus (Smart Meter)</SelectItem>
+              <SelectItem value="lan">LAN Modbus (Smart Meter) — empfohlen</SelectItem>
+              <SelectItem value="cloud">Anker Cloud API (Passwort-Konto)</SelectItem>
             </SelectContent>
           </Select>
           <p className="text-muted-foreground text-xs">
-            Cloud-Zugangsdaten: {ankerConfigured ? "gesetzt" : "fehlen (ANKER_EMAIL / ANKER_PASSWORD)"}.
+            Cloud: {ankerConfigured ? "Zugangsdaten gesetzt" : "kein Passwort-Konto (Apple Sign-In reicht nicht)"}.
+            Optional: System an ein E‑Mail/Passwort-Zweitkonto freigeben.
           </p>
         </div>
 
