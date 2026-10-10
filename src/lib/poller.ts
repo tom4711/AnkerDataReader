@@ -4,7 +4,8 @@ import { generateMockSample } from "@/lib/anker/mock";
 import { hasAnkerCredentials, readConfig, writeConfig } from "@/lib/config";
 import { getLatestReading, getReadingCount, insertReading } from "@/lib/db";
 import { seedMockHistoryIfEmpty } from "@/lib/seed";
-import type { AppConfig, DeviceReachability, PollStatus } from "@/lib/types";
+import type { AppConfig, DeviceReachability, PollStatus, WeatherSnapshot } from "@/lib/types";
+import { fetchWeatherSample } from "@/lib/weather";
 
 interface PollerState {
   timer: ReturnType<typeof setInterval> | null;
@@ -16,6 +17,8 @@ interface PollerState {
   polling: boolean;
   lanSmartMeter: DeviceReachability | null;
   lanSolarbank: DeviceReachability | null;
+  lastWeather: WeatherSnapshot | null;
+  lastWeatherError: string | null;
 }
 
 const globalForPoller = globalThis as unknown as { __ankerPoller?: PollerState };
@@ -32,6 +35,8 @@ function state(): PollerState {
       polling: false,
       lanSmartMeter: null,
       lanSolarbank: null,
+      lastWeather: null,
+      lastWeatherError: null,
     };
   }
   return globalForPoller.__ankerPoller;
@@ -66,17 +71,36 @@ export async function runPollOnce(): Promise<{ ok: boolean; error?: string }> {
       s.lanSmartMeter = reachability.smartMeter;
       s.lanSolarbank = reachability.solarbank;
     }
+
+    let weather: WeatherSnapshot | null = s.lastWeather;
+    try {
+      const wx = await fetchWeatherSample();
+      if (wx) {
+        weather = {
+          temperatureC: wx.temperatureC,
+          cloudCoverPercent: wx.cloudCoverPercent,
+          shortwaveRadiationWm2: wx.shortwaveRadiationWm2,
+          weatherCode: wx.weatherCode,
+          windSpeedKmh: wx.windSpeedKmh,
+          observedAt: wx.observedAt,
+          locationLabel: wx.locationLabel,
+        };
+        s.lastWeather = weather;
+        s.lastWeatherError = null;
+      }
+    } catch (err) {
+      s.lastWeatherError = err instanceof Error ? err.message : String(err);
+      // Keep last good weather snapshot on the reading when fetch fails.
+    }
+
     insertReading({
       source: config.dataSource,
       siteName: sample.siteName,
-      solarPowerW: sample.solarPowerW,
-      batteryPowerW: sample.batteryPowerW,
-      batterySocPercent: sample.batterySocPercent,
-      homeLoadW: sample.homeLoadW,
-      gridPowerW: sample.gridPowerW,
+      cloud: sample.cloud,
       meterPowerW: sample.meterPowerW,
       charging: sample.charging,
       rawJson: JSON.stringify(sample.raw),
+      weather,
     });
     s.lastSuccessAt = new Date().toISOString();
     s.lastError = null;
@@ -144,6 +168,7 @@ export function getPollStatus(): PollStatus {
       solarbank: s.lanSolarbank,
       note: LAN_LIMITATIONS_DE,
     },
+    weather: s.lastWeather,
   };
 }
 

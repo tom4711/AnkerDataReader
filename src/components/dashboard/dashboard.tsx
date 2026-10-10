@@ -7,7 +7,15 @@ import { SettingsPanel } from "@/components/dashboard/settings-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatPercent, formatTime, formatWatts, gridLabel } from "@/lib/format";
+import {
+  formatIrradiance,
+  formatPercent,
+  formatTempC,
+  formatTime,
+  formatWatts,
+  gridLabel,
+  weatherCodeLabel,
+} from "@/lib/format";
 import type { AppConfig, PollStatus, Reading } from "@/lib/types";
 
 interface StatusResponse {
@@ -142,32 +150,33 @@ export function Dashboard() {
           <>
             <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <MetricTile
-                label="Solar"
-                value={formatWatts(latest.solarPowerW)}
+                label="Solar (Cloud)"
+                value={formatWatts(latest.cloud.solarPowerW)}
                 hint={latest.siteName}
                 accent="solar"
               />
               <MetricTile
-                label="Batterie"
-                value={formatWatts(latest.batteryPowerW)}
-                hint={`SoC ${formatPercent(latest.batterySocPercent)} · ${latest.charging ? "lädt" : "entlädt/ruhe"}`}
+                label="Batterie (Cloud)"
+                value={formatWatts(latest.cloud.batteryPowerW)}
+                hint={`SoC ${formatPercent(latest.cloud.batterySocPercent)} · ${latest.charging ? "lädt" : "entlädt/ruhe"}`}
                 accent="battery"
               />
               <MetricTile
-                label="Hausverbrauch"
-                value={formatWatts(latest.homeLoadW)}
+                label="Hausverbrauch (Cloud)"
+                value={formatWatts(latest.cloud.homeLoadW)}
+                hint="Anker-App / Cloud"
                 accent="home"
               />
               <MetricTile
-                label="Netz"
-                value={formatWatts(latest.gridPowerW)}
-                hint={gridLabel(latest.gridPowerW)}
+                label="Netz (Cloud)"
+                value={formatWatts(latest.cloud.gridPowerW)}
+                hint={`${gridLabel(latest.cloud.gridPowerW ?? 0)} · Anker-App`}
                 accent="grid"
               />
               <MetricTile
-                label="Smart Meter"
+                label="Zähler (Meter)"
                 value={formatWatts(latest.meterPowerW)}
-                hint="positiv = Bezug"
+                hint="live Modbus · positiv = Bezug"
                 accent="meter"
               />
               <MetricTile
@@ -175,6 +184,16 @@ export function Dashboard() {
                 value={formatTime(latest.recordedAt)}
                 hint={`Quelle: ${latest.source} · ${status?.status.readingCount ?? 0} Punkte`}
                 accent="solar"
+              />
+              <MetricTile
+                label="Wetter"
+                value={formatTempC(latest.weather?.temperatureC ?? status?.status.weather?.temperatureC)}
+                hint={
+                  latest.weather || status?.status.weather
+                    ? `${weatherCodeLabel((latest.weather ?? status?.status.weather)?.weatherCode)} · Wolken ${formatPercent((latest.weather ?? status?.status.weather)?.cloudCoverPercent)} · ${formatIrradiance((latest.weather ?? status?.status.weather)?.shortwaveRadiationWm2)} · ${(latest.weather ?? status?.status.weather)?.locationLabel ?? "—"}`
+                    : "noch kein Wetterpunkt"
+                }
+                accent="home"
               />
             </section>
 

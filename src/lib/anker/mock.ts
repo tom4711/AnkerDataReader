@@ -28,21 +28,25 @@ export function generateMockSample(now = new Date()): NormalizedSample {
   }
 
   batterySocPercent = Math.max(8, Math.min(100, batterySocPercent));
-  const meterPowerW = Math.round(gridPowerW);
+  const cloudGrid = Math.round(gridPowerW);
+  // Simulate slight live-meter offset vs "cloud" grid for demo charts.
+  const meterPowerW = cloudGrid + Math.round(Math.sin(minutes / 5) * 35);
 
   return {
     siteName: "Demo Solarbank 2 + Smart Meter",
-    solarPowerW: Math.max(0, solarPowerW),
-    batteryPowerW: Math.round(batteryPowerW),
-    batterySocPercent: Math.round(batterySocPercent * 10) / 10,
-    homeLoadW: Math.max(0, homeLoadW),
-    gridPowerW: Math.round(gridPowerW),
+    cloud: {
+      solarPowerW: Math.max(0, solarPowerW),
+      batteryPowerW: Math.round(batteryPowerW),
+      batterySocPercent: Math.round(batterySocPercent * 10) / 10,
+      homeLoadW: Math.max(0, homeLoadW),
+      gridPowerW: cloudGrid,
+    },
     meterPowerW,
     charging: batteryPowerW < 0,
     raw: {
       mode: "mock",
       generatedAt: now.toISOString(),
-      note: "Simulated Solarbank 2 E1600 Pro + Smart Meter Gen 2 values",
+      note: "Simulated Solarbank 2 E1600 Pro + Smart Meter Gen 2 values (cloud vs meter separated)",
     },
   };
 }

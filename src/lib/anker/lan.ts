@@ -1,6 +1,6 @@
 import net from "net";
 import ModbusRTU from "modbus-serial";
-import type { DeviceEndpoints, DeviceReachability, NormalizedSample } from "@/lib/types";
+import type { CloudPowerSnapshot, DeviceEndpoints, DeviceReachability, NormalizedSample } from "@/lib/types";
 import { hasAnkerCredentials } from "@/lib/config";
 import { fetchAnkerSample } from "@/lib/anker/client";
 
@@ -42,6 +42,7 @@ export async function probeDevices(devices: DeviceEndpoints) {
  * Smart Meter Gen 2: Modbus TCP (enable in Anker app → Three-Party / Modbus).
  * Community map: input register 56 = total active power (float32).
  * Solarbank 2 E1600 Pro: no public local Modbus/HTTP API — optional cloud enrich.
+ * Cloud and meter channels stay separate for later statistics.
  */
 export async function fetchLanSample(devices: DeviceEndpoints): Promise<{
   sample: NormalizedSample;
@@ -80,10 +81,13 @@ export async function fetchLanSample(devices: DeviceEndpoints): Promise<{
       phasePowers = [];
     }
 
-    let solarPowerW = 0;
-    let batteryPowerW = 0;
-    let batterySocPercent = 0;
-    let homeLoadW = 0;
+    let cloud: CloudPowerSnapshot = {
+      solarPowerW: null,
+      batteryPowerW: null,
+      batterySocPercent: null,
+      homeLoadW: null,
+      gridPowerW: null,
+    };
     let charging = false;
     let siteName = "LAN: Smart Meter Gen 2";
     let cloudPart: unknown = null;
@@ -91,40 +95,31 @@ export async function fetchLanSample(devices: DeviceEndpoints): Promise<{
     // SB2 has no local Modbus — enrich from cloud when credentials are present.
     if (hasAnkerCredentials()) {
       try {
-        const cloud = await fetchAnkerSample();
-        solarPowerW = cloud.solarPowerW;
-        batteryPowerW = cloud.batteryPowerW;
-        batterySocPercent = cloud.batterySocPercent;
-        homeLoadW = cloud.homeLoadW;
-        charging = cloud.charging;
-        siteName = `${cloud.siteName} (LAN-Meter)`;
-        cloudPart = cloud.raw;
+        const sample = await fetchAnkerSample();
+        cloud = sample.cloud;
+        charging = sample.charging;
+        siteName = `${sample.siteName} (LAN-Meter)`;
+        cloudPart = sample.raw;
       } catch (err) {
         cloudPart = {
           cloudError: err instanceof Error ? err.message : String(err),
         };
       }
     } else if (!reachability.solarbank.reachable) {
-      // Expected for SB2: port 502 usually closed.
       siteName = "LAN: Smart Meter Gen 2 (Solarbank nur via Cloud)";
-    }
-
-    if (!homeLoadW && meterPowerW !== 0) {
-      // Without solar/battery context, approximate home load from grid import only when importing.
-      homeLoadW = Math.max(0, meterPowerW);
     }
 
     const sample: NormalizedSample = {
       siteName,
-      solarPowerW,
-      batteryPowerW,
-      batterySocPercent,
-      homeLoadW,
-      gridPowerW: meterPowerW,
+      cloud,
       meterPowerW,
       charging,
       raw: {
         mode: "lan",
+        channels: {
+          meter: "modbus",
+          solarbank: "cloud",
+        },
         smartMeter: {
           host: devices.smartMeterHost,
           port: devices.smartMeterPort,

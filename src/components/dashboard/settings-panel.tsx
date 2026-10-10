@@ -82,8 +82,8 @@ export function SettingsPanel({ config, ankerConfigured, onSaved }: SettingsPane
             onChange={(e) => setPollIntervalSeconds(Number(e.target.value))}
           />
           <p className="text-muted-foreground text-xs">
-            Standard 60 s — klar unter den ~20 Min. der Anker-App-Historie. Cloud-SB2 liefert oft nur alle ~5
-            Min. frische Werte.
+            Min. 15 s. Smart Meter ist live per Modbus; Hausverbrauch/Netz/Solar/SoC wie in der Anker-App
+            (Cloud, oft ~5 Min.).
           </p>
         </div>
 
